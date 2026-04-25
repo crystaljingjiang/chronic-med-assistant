@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>慢病用药小管家 · 美团</title>
+<style>
+  :root {
+    --mt-yellow: #FFC600;
+    --mt-yellow-dark: #F5B800;
+    --mt-yellow-light: #FFE680;
+    --mt-yellow-soft: #FFF6D6;
+    --ink: #1a1a1a;
+    --ink-2: #4a4a4a;
+    --ink-3: #8a8a8a;
+    --line: #f0f0f0;
+    --bg: #f6f7f9;
+    --ok: #10b981;
+    --warn: #f97316;
+    --err: #dc2626;
+    --info: #3b82f6;
+    --base-font: 14px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--ink); font-size: var(--base-font); }
+
+  /* === Large-font mode === */
+  body.font-lg { --base-font: 17px; }
+  body.font-xl { --base-font: 20px; }
+  body.font-lg .pill-icon, body.font-xl .pill-icon { width: 44px; height: 44px; font-size: 22px; }
+  body.font-lg .tab .ico, body.font-xl .tab .ico { font-size: 26px; }
+  body.font-lg .hero .next, body.font-xl .hero .next { font-size: 26px; }
+  body.font-lg .hero .countdown b, body.font-xl .hero .countdown b { font-size: 34px; }
+
+  /* App shell — phone frame */
+  .app-wrap { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 24px; background: linear-gradient(135deg, #ffe9a8 0%, #fff6d6 100%); }
+  .phone { width: 390px; height: 820px; background: var(--bg); border-radius: 40px; box-shadow: 0 30px 80px rgba(80,60,0,.18), 0 0 0 10px #1a1f2b, 0 0 0 12px #2c3344; overflow: hidden; position: relative; display: flex; flex-direction: column; }
+  .status-bar { height: 36px; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; font-size: 13px; font-weight: 600; color: var(--ink); }
+  .notch { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 110px; height: 24px; background: #1a1f2b; border-radius: 14px; z-index: 10; }
+
+  /* Header */
+  .header { padding: 6px 18px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .header .title-block { flex: 1; min-width: 0; }
+  .header h1 { font-size: calc(var(--base-font) + 6px); font-weight: 700; color: var(--ink); }
+  .header .sub { font-size: calc(var(--base-font) - 2px); color: var(--ink-3); margin-top: 2px; }
+  .header .tools { display: flex; gap: 6px; flex-shrink: 0; }
+  .icon-btn { width: 36px; height: 36px; border-radius: 50%; background: #fff; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.04); }
+  .icon-btn.active { background: var(--mt-yellow); border-color: var(--mt-yellow); }
+
+  /* Page area */
+  .page-area { flex: 1; overflow-y: auto; padding-bottom: 90px; scrollbar-width: none; }
+  .page-area::-webkit-scrollbar { display: none; }
+  .page { display: none; padding: 0 16px; animation: fadeIn .25s ease; }
+  .page.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* Card primitives */
+  .card { background: #fff; border-radius: 18px; padding: 16px; margin-bottom: 14px; box-shadow: 0 2px 12px rgba(80,60,0,.05); }
+  .card-title { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .card-title h3 { font-size: calc(var(--base-font) + 1px); font-weight: 600; color: var(--ink); }
+  .card-title .more { font-size: calc(var(--base-font) - 2px); color: var(--ink-2); cursor: pointer; }
+
+  /* Hero */
+  .hero { background: linear-gradient(135deg, #FFC600 0%, #FFD83D 60%, #FFE680 100%); color: var(--ink); border-radius: 22px; padding: 20px; margin-bottom: 16px; position: relative; overflow: hidden; }
+  .hero::before { content:""; position: absolute; right: -40px; top: -40px; width: 160px; height: 160px; border-radius: 50%; background: rgba(255,255,255,.32); }
+  .hero::after { content:""; position: absolute; right: 30px; bottom: -50px; width: 110px; height: 110px; border-radius: 50%; background: rgba(255,255,255,.2); }
+  .hero .greeting { font-size: calc(var(--base-font) - 1px); opacity: .8; position: relative; z-index: 1; }
+  .hero .next { font-size: calc(var(--base-font) + 8px); font-weight: 700; margin: 6px 0 4px; position: relative; z-index: 1; }
+  .hero .next-detail { font-size: calc(var(--base-font) - 1px); opacity: .9; position: relative; z-index: 1; }
+  .hero .countdown { display: flex; align-items: baseline; gap: 6px; margin-top: 14px; position: relative; z-index: 1; }
+  .hero .countdown b { font-size: calc(var(--base-font) + 14px); font-weight: 700; }
+  .hero .countdown span { font-size: calc(var(--base-font) - 2px); opacity: .8; }
+  .hero .quick { display: flex; gap: 10px; margin-top: 14px; position: relative; z-index: 1; }
+  .hero .quick button { flex: 1; background: rgba(255,255,255,.55); backdrop-filter: blur(6px); color: var(--ink); border: 1px solid rgba(255,255,255,.7); padding: 11px; border-radius: 12px; font-size: calc(var(--base-font) - 1px); font-weight: 600; cursor: pointer; transition: .2s; }
+  .hero .quick button:active { transform: scale(.96); background: rgba(255,255,255,.85); }
+
+  /* Hero "all done" state */
+  .hero.done { background: linear-gradient(135deg, #6ee7b7 0%, #a7f3d0 60%, #d1fae5 100%); }
+  .hero.done .check-big { font-size: 60px; line-height: 1; margin-bottom: 8px; }
+
+  /* Stat row */
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+  .stat-tile { background: #fff; border-radius: 16px; padding: 12px; text-align: center; box-shadow: 0 2px 12px rgba(80,60,0,.05); }
+  .stat-tile .num { font-size: calc(var(--base-font) + 6px); font-weight: 700; color: var(--ink); }
+  .stat-tile .num.warn { color: var(--warn); }
+  .stat-tile .num.good { color: var(--ok); }
+  .stat-tile .lbl { font-size: calc(var(--base-font) - 3px); color: var(--ink-3); margin-top: 2px; }
+
+  /* Med list rows */
+  .med-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px dashed var(--line); }
+  .med-row:last-child { border: 0; }
+  .pill-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .pill-icon.yellow { background: var(--mt-yellow-soft); color: #b88700; }
+  .pill-icon.blue { background: #dbeafe; color: #2563eb; }
+  .pill-icon.green { background: #d1fae5; color: #059669; }
+  .pill-icon.orange { background: #ffedd5; color: #ea580c; }
+  .pill-icon.purple { background: #ede9fe; color: #7c3aed; }
+  .pill-icon.red { background: #fee2e2; color: #dc2626; }
+  .med-info { flex: 1; min-width: 0; }
+  .med-info .name { font-size: var(--base-font); font-weight: 600; color: var(--ink); }
+  .med-info .dose { font-size: calc(var(--base-font) - 2px); color: var(--ink-3); margin-top: 2px; }
+  .med-action { font-size: calc(var(--base-font) - 2px); padding: 7px 14px; border-radius: 14px; border: none; cursor: pointer; font-weight: 600; }
+  .med-action.todo { background: var(--mt-yellow); color: var(--ink); }
+  .med-action.done { background: #ecfdf5; color: #059669; }
+  .med-action.missed { background: #fef2f2; color: #dc2626; }
+
+  /* Purpose tag — highlighted */
+  .purpose {
+    display: inline-block; background: var(--mt-yellow); color: var(--ink); font-weight: 700;
+    font-size: calc(var(--base-font) - 3px); padding: 2px 8px; border-radius: 6px; margin-right: 6px;
+    box-shadow: 0 1px 3px rgba(255,198,0,.4);
+  }
+
+  /* Bottom nav */
+  .tab-bar { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(255,255,255,.97); backdrop-filter: blur(20px); display: flex; justify-content: space-around; padding: 8px 2px 18px; border-top: 1px solid var(--line); z-index: 20; }
+  .tab { flex: 1; text-align: center; padding: 6px 0; cursor: pointer; color: var(--ink-3); font-size: calc(var(--base-font) - 4px); transition: color .2s; }
+  .tab .ico { font-size: 22px; line-height: 1; display: block; margin-bottom: 2px; }
+  .tab.active { color: #b88700; }
+  .tab.active .ico { transform: translateY(-1px); }
+
+  /* Banner / alerts */
+  .alert { display: flex; gap: 10px; padding: 12px 14px; border-radius: 14px; margin-bottom: 14px; align-items: flex-start; }
+  .alert.warn { background: #fff7ed; border: 1px solid #fed7aa; }
+  .alert.info { background: var(--mt-yellow-soft); border: 1px solid var(--mt-yellow-light); }
+  .alert .ico { font-size: 18px; }
+  .alert .body { flex: 1; }
+  .alert .body .t { font-size: calc(var(--base-font) - 1px); font-weight: 600; color: var(--ink); }
+  .alert .body .d { font-size: calc(var(--base-font) - 2px); color: var(--ink-3); margin-top: 2px; }
+  .alert button { background: #fff; border: 1px solid var(--line); color: var(--ink); font-size: calc(var(--base-font) - 2px); padding: 7px 12px; border-radius: 10px; cursor: pointer; font-weight: 600; }
+  .alert.warn button { background: var(--warn); border-color: var(--warn); color: #fff; }
+  .alert.info button { background: var(--mt-yellow); border-color: var(--mt-yellow); color: var(--ink); }
+
+  /* Schedule timeline */
+  .timeline-item { display: flex; gap: 12px; padding: 10px 0; align-items: center; }
+  .time-col { width: 52px; text-align: right; font-size: calc(var(--base-font) - 2px); color: var(--ink-3); font-weight: 600; }
+  .dot-col { width: 16px; display: flex; flex-direction: column; align-items: center; align-self: stretch; }
+  .dot-col .dot { width: 10px; height: 10px; border-radius: 50%; background: #cbd5e1; margin-top: 4px; }
+  .dot-col .dot.done { background: var(--ok); }
+  .dot-col .dot.now { background: var(--mt-yellow); box-shadow: 0 0 0 4px rgba(255,198,0,.25); }
+  .dot-col .line { width: 2px; flex: 1; background: var(--line); margin-top: 2px; }
+  .timeline-item:last-child .line { display: none; }
+  .item-card { flex: 1; background: #f8fafc; border-radius: 12px; padding: 10px 12px; }
+  .item-card.now { background: var(--mt-yellow-soft); border: 1px solid var(--mt-yellow-light); }
+  .item-card .meds { font-size: calc(var(--base-font) - 1px); font-weight: 600; color: var(--ink); }
+  .item-card .note { font-size: calc(var(--base-font) - 3px); color: var(--ink-3); margin-top: 2px; }
+
+  /* Buttons */
+  .btn-primary { width: 100%; background: linear-gradient(135deg, var(--mt-yellow), var(--mt-yellow-dark)); color: var(--ink); border: none; padding: 14px; border-radius: 14px; font-size: var(--base-font); font-weight: 700; cursor: pointer; box-shadow: 0 6px 16px rgba(255,198,0,.4); }
+  .btn-primary:active { transform: scale(.98); }
+  .btn-ghost { width: 100%; background: #fff; color: var(--ink); border: 1px solid var(--mt-yellow); padding: 13px; border-radius: 14px; font-size: var(--base-font); font-weight: 600; cursor: pointer; }
+
+  /* Inventory */
+  .inv-bar-wrap { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+  .inv-bar { height: 100%; border-radius: 3px; }
+  .inv-bar.green { background: linear-gradient(90deg, #10b981, #34d399); }
+  .inv-bar.orange { background: linear-gradient(90deg, #f97316, #fb923c); }
+  .inv-bar.red { background: linear-gradient(90deg, #dc2626, #ef4444); }
+  .inv-item { padding: 12px 0; border-bottom: 1px dashed var(--line); }
+  .inv-item:last-child { border: 0; }
+  .inv-item .top { display: flex; justify-content: space-between; align-items: center; }
+  .inv-item .name { font-size: var(--base-font); font-weight: 600; }
+  .inv-item .qty { font-size: calc(var(--base-font) - 2px); color: var(--ink-3); }
+  .inv-item .qty b { color: var(--ink); font-size: var(--base-font); }
+  .inv-item .meta { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: calc(var(--base-font) - 3px); color: var(--ink-3); }
+  .inv-item .reorder { background: var(--mt-yellow); color: var(--ink); border: none; padding: 6px 12px; border-radius: 10px; font-size: calc(var(--base-font) - 3px); font-weight: 700; cursor: pointer; }
+
+  /* Follow-up */
+  .followup-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px dashed var(--line); }
+  .followup-item:last-child { border: 0; }
+  .fu-info .doc { font-size: var(--base-font); font-weight: 600; }
+  .fu-info .det { font-size: calc(var(--base-font) - 2px); color: var(--ink-3); margin-top: 2px; }
+  .fu-info .when { font-size: calc(var(--base-font) - 3px); color: var(--warn); margin-top: 4px; font-weight: 600; }
+
+  /* Health metrics */
+  .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .metric { background: #f8fafc; border-radius: 12px; padding: 12px; }
+  .metric .lbl { font-size: calc(var(--base-font) - 3px); color: var(--ink-3); }
+  .metric .val { font-size: calc(var(--base-font) + 4px); font-weight: 700; color: var(--ink); margin-top: 4px; }
+  .metric .val .unit { font-size: calc(var(--base-font) - 3px); color: var(--ink-3); font-weight: 400; margin-left: 2px; }
+  .metric .trend { font-size: calc(var(--base-font) - 3px); margin-top: 4px; }
+  .metric .trend.up { color: var(--err); }
+  .metric .trend.down { color: var(--ok); }
+  .metric .trend.stable { color: var(--ink-3); }
+
+  /* Mini chart */
+  .mini-chart { height: 80px; display: flex; align-items: flex-end; gap: 6px; margin-top: 10px; padding: 0 4px 18px; }
+  .mini-chart .bar { flex: 1; background: linear-gradient(180deg, var(--mt-yellow-light), var(--mt-yellow)); border-radius: 4px 4px 0 0; position: relative; }
+  .mini-chart .bar::after { content: attr(data-day); position: absolute; bottom: -16px; left: 50%; transform: translateX(-50%); font-size: 9px; color: var(--ink-3); }
+
+  /* Tag */
+  .tag { display: inline-block; background: #f1f5f9; color: #475569; font-size: calc(var(--base-font) - 4px); padding: 2px 6px; border-radius: 6px; margin-right: 4px; }
+  .tag.warn { background: #ffedd5; color: #c2410c; }
+  .tag.info { background: var(--mt-yellow-soft); color: #b88700; }
+  .tag.good { background: #d1fae5; color: #059669; }
+
+  /* Modal */
+  .modal-mask { position: absolute; inset: 0; background: rgba(15,23,42,.55); display: none; justify-content: center; align-items: flex-end; z-index: 50; }
+  .modal-mask.show { display: flex; animation: fadeMask .2s; }
+  @keyframes fadeMask { from { opacity: 0; } to { opacity: 1; } }
+  .modal { width: 100%; background: #fff; border-radius: 24px 24px 0 0; padding: 20px 18px 26px; max-height: 80%; overflow-y: auto; animation: slideUp .25s; }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: none; } }
+  .modal h3 { font-size: calc(var(--base-font) + 2px); font-weight: 700; margin-bottom: 14px; text-align: center; }
+  .field { margin-bottom: 12px; }
+  .field label { font-size: calc(var(--base-font) - 2px); color: var(--ink-3); display: block; margin-bottom: 6px; }
+  .field input, .field select { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: var(--base-font); outline: none; background: #f8fafc; }
+  .field input:focus, .field select:focus { border-color: var(--mt-yellow); background: #fff; }
+
+  /* Toast */
+  .toast { position: absolute; top: 80px; left: 50%; transform: translateX(-50%) translateY(-12px); background: rgba(15,23,42,.92); color: #fff; padding: 10px 16px; border-radius: 12px; font-size: calc(var(--base-font) - 1px); opacity: 0; pointer-events: none; transition: .25s; z-index: 100; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Section title */
+  .section-title { font-size: calc(var(--base-font) - 1px); font-weight: 600; color: var(--ink-2); padding: 4px 4px 8px; display: flex; justify-content: space-between; }
+  .section-title a { color: #b88700; font-size: calc(var(--base-font) - 2px); cursor: pointer; }
+
+  /* Quick service entry (only for unique services not duplicated by tabs) */
+  .service-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .service { background: #fff; border-radius: 14px; padding: 12px 4px; text-align: center; cursor: pointer; box-shadow: 0 2px 10px rgba(80,60,0,.04); transition: .15s; }
+  .service:active { transform: scale(.95); }
+  .service .ico { font-size: 24px; display: block; margin-bottom: 4px; }
+  .service .lbl { font-size: calc(var(--base-font) - 3px); color: var(--ink); font-weight: 600; }
+  .service.featured { background: linear-gradient(135deg, var(--mt-yellow-soft), #fff); border: 1px solid var(--mt-yellow-light); }
+
+  /* AI Chat */
+  .chat-area { padding: 8px 4px 12px; }
+  .chat-msg { display: flex; gap: 8px; margin-bottom: 12px; align-items: flex-start; }
+  .chat-msg .av { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .chat-msg .av.ai { background: var(--mt-yellow); }
+  .chat-msg .av.me { background: #e0e7ff; }
+  .chat-msg .bubble { background: #fff; border-radius: 14px; padding: 10px 12px; font-size: calc(var(--base-font) - 1px); line-height: 1.5; box-shadow: 0 1px 4px rgba(0,0,0,.04); max-width: 78%; }
+  .chat-msg.me { flex-direction: row-reverse; }
+  .chat-msg.me .bubble { background: var(--mt-yellow-soft); }
+
+  .quick-q { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 4px 12px; }
+  .quick-q span { background: #fff; border: 1px solid var(--mt-yellow-light); color: var(--ink); padding: 6px 10px; border-radius: 14px; font-size: calc(var(--base-font) - 2px); cursor: pointer; }
+
+  .chat-input-bar { display: flex; gap: 8px; padding: 8px 4px; }
+  .chat-input-bar input { flex: 1; padding: 10px 14px; border: 1px solid var(--line); border-radius: 22px; font-size: var(--base-font); background: #fff; outline: none; }
+  .chat-input-bar button { background: var(--mt-yellow); border: none; padding: 0 18px; border-radius: 22px; font-weight: 700; cursor: pointer; color: var(--ink); }
+
+  /* Drug interaction check */
+  .check-list { display: flex; flex-direction: column; gap: 8px; }
+  .check-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #f8fafc; border-radius: 12px; border: 2px solid transparent; cursor: pointer; }
+  .check-item.checked { background: var(--mt-yellow-soft); border-color: var(--mt-yellow); }
+  .check-item .cbox { width: 20px; height: 20px; border: 2px solid #cbd5e1; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 14px; color: #fff; }
+  .check-item.checked .cbox { background: var(--mt-yellow); border-color: var(--mt-yellow); color: var(--ink); }
+  .check-item .nm { font-size: calc(var(--base-font) - 1px); font-weight: 600; flex: 1; }
+  .check-item .pp { font-size: calc(var(--base-font) - 3px); color: var(--ink-3); }
+
+  .check-result { background: #fff; border-radius: 14px; padding: 14px; margin-top: 12px; }
+  .severity { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: calc(var(--base-font) - 3px); font-weight: 700; margin-bottom: 6px; }
+  .severity.high { background: #fee2e2; color: var(--err); }
+  .severity.mid { background: #fff7ed; color: var(--warn); }
+  .severity.low { background: #ecfdf5; color: var(--ok); }
+  .check-result .pair { font-size: calc(var(--base-font) - 1px); font-weight: 600; margin-bottom: 4px; }
+  .check-result .desc { font-size: calc(var(--base-font) - 2px); color: var(--ink-2); line-height: 1.5; }
+
+  /* Settings page */
+  .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .setting-row:last-child { border: 0; }
+  .setting-row .lbl { font-size: var(--base-font); font-weight: 600; }
+  .setting-row .desc { font-size: calc(var(--base-font) - 2px); color: var(--ink-3); margin-top: 2px; }
+  .font-options { display: flex; gap: 8px; }
+  .font-opt { padding: 10px 14px; border: 2px solid var(--line); border-radius: 12px; cursor: pointer; background: #fff; font-weight: 600; }
+  .font-opt.active { background: var(--mt-yellow); border-color: var(--mt-yellow); }
+  .font-opt.size-sm { font-size: 14px; }
+  .font-opt.size-md { font-size: 17px; }
+  .font-opt.size-lg { font-size: 20px; }
+  .preview-text { background: var(--mt-yellow-soft); padding: 14px; border-radius: 12px; margin-top: 12px; font-size: var(--base-font); line-height: 1.6; color: var(--ink); }
+
+</style>
+</head>
+<body>
+<div class="app-wrap">
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="status-bar">
+      <span>9:41</span>
+      <span>● ● ●</span>
+      <span>📶 100%</span>
+    </div>
+
+    <div class="header">
+      <div class="title-block">
+        <h1 id="page-title">早上好，王伯伯 👋</h1>
+        <div class="sub" id="page-sub">今天是 4 月 24 日，星期五</div>
+      </div>
+      <div class="tools">
+        <button class="icon-btn" id="font-btn" title="字体大小" onclick="switchPage('settings')">🔍A</button>
+      </div>
+    </div>
+
+    <div class="page-area">
+
+      <!-- ============= 首页（精简：去除与底部 Tab 重复内容） ============= -->
+      <div class="page active" id="page-home">
+
+        <!-- Hero: dynamic state -->
+        <div class="hero" id="hero">
+          <!-- content rendered by JS -->
+        </div>
+
+        <!-- Cross-cutting alerts (聚合提醒，非重复入口) -->
+        <div class="alert warn" id="inv-alert">
+          <span class="ico">⚠️</span>
+          <div class="body">
+            <div class="t">「氨氯地平」库存仅剩 5 片</div>
+            <div class="d">按当前用量约 5 天后用完，建议提前续方</div>
+          </div>
+          <button onclick="switchPage('refill')">去续方</button>
+        </div>
+
+        <div class="alert info">
+          <span class="ico">📅</span>
+          <div class="body">
+            <div class="t">距离下次复诊还有 3 天</div>
+            <div class="d">5月3日 · 协和医院 · 内分泌科 张主任</div>
+          </div>
+          <button onclick="switchPage('refill')">查看</button>
+        </div>
+
+        <!-- Stats overview -->
+        <div class="stat-row">
+          <div class="stat-tile"><div class="num good">93%</div><div class="lbl">7日依从率</div></div>
+          <div class="stat-tile"><div class="num">5</div><div class="lbl">在用药品</div></div>
+          <div class="stat-tile"><div class="num warn" id="stat-todo">3</div><div class="lbl">今日待服</div></div>
+        </div>
+
+        <!-- 新功能快捷入口（不与 Tab 重复） -->
+        <div class="section-title"><span>智能服务</span></div>
+        <div class="service-grid">
+          <div class="service featured" onclick="switchPage('ai')">
+            <span class="ico">🤖</span>
+            <span class="lbl">AI用药咨询</span>
+          </div>
+          <div class="service featured" onclick="switchPage('ai');setAiTab('check')">
+            <span class="ico">🔬</span>
+            <span class="lbl">相互作用</span>
+          </div>
+          <div class="service" onclick="toast('正在为您连线在线问诊…')">
+            <span class="ico">🩺</span>
+            <span class="lbl">在线问诊</span>
+          </div>
+          <div class="service" onclick="toast('正在连线主治医生…')">
+            <span class="ico">👨‍⚕️</span>
+            <span class="lbl">我的医生</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ============= 用药计划 ============= -->
+      <div class="page" id="page-plan">
+        <div class="card">
+          <div class="card-title"><h3>⏰ 今日时间表</h3><span class="more" onclick="openAddModal()">+ 添加用药</span></div>
+          <div id="timeline"><!-- rendered --></div>
+        </div>
+
+        <div class="section-title"><span>我的常用药 (5)</span><a onclick="openAddModal()">管理</a></div>
+        <div class="card">
+          <div class="med-row">
+            <div class="pill-icon red">❤</div>
+            <div class="med-info">
+              <div class="name"><span class="purpose">抗血栓</span>阿司匹林肠溶片</div>
+              <div class="dose">100mg · 每日1次 · 早餐前 <span class="tag good">长期服用</span></div>
+            </div>
+          </div>
+          <div class="med-row">
+            <div class="pill-icon blue">💊</div>
+            <div class="med-info">
+              <div class="name"><span class="purpose">降血糖</span>二甲双胍片</div>
+              <div class="dose">0.5g · 每日2次 · 餐后 <span class="tag info">糖尿病</span></div>
+            </div>
+          </div>
+          <div class="med-row">
+            <div class="pill-icon orange">💊</div>
+            <div class="med-info">
+              <div class="name"><span class="purpose">降血压</span>氨氯地平</div>
+              <div class="dose">5mg · 每日1次 · 晚餐后 <span class="tag info">高血压</span> <span class="tag warn">库存不足</span></div>
+            </div>
+          </div>
+          <div class="med-row">
+            <div class="pill-icon purple">💊</div>
+            <div class="med-info">
+              <div class="name"><span class="purpose">降血脂</span>阿托伐他汀</div>
+              <div class="dose">20mg · 每日1次 · 睡前 <span class="tag info">高血脂</span></div>
+            </div>
+          </div>
+          <div class="med-row">
+            <div class="pill-icon green">💊</div>
+            <div class="med-info">
+              <div class="name"><span class="purpose">护心脏</span>辅酶Q10</div>
+              <div class="dose">100mg · 每日1次 · 早餐后 <span class="tag">保健</span></div>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-primary" onclick="openAddModal()">+ 添加新药品</button>
+      </div>
+
+      <!-- ============= 药品库存 ============= -->
+      <div class="page" id="page-inventory">
+        <div class="alert warn">
+          <span class="ico">📦</span>
+          <div class="body">
+            <div class="t">2 种药品库存不足</div>
+            <div class="d">系统已预约药师审方，可一键购药</div>
+          </div>
+          <button onclick="toast('已为您发起一键续购')">一键续购</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><h3>💊 在用药品库存</h3><span class="more">扫码入库</span></div>
+
+          <div class="inv-item">
+            <div class="top"><span class="name"><span class="purpose">降血压</span>氨氯地平 5mg</span><span class="qty"><b>5</b> / 30 片</span></div>
+            <div class="inv-bar-wrap"><div class="inv-bar red" style="width:17%"></div></div>
+            <div class="meta"><span>预计 5 天后用完</span><button class="reorder" onclick="toast('正在为您下单…')">立即购药</button></div>
+          </div>
+
+          <div class="inv-item">
+            <div class="top"><span class="name"><span class="purpose">降血脂</span>阿托伐他汀</span><span class="qty"><b>8</b> / 30 片</span></div>
+            <div class="inv-bar-wrap"><div class="inv-bar orange" style="width:27%"></div></div>
+            <div class="meta"><span>预计 8 天后用完</span><button class="reorder" onclick="toast('正在为您下单…')">立即购药</button></div>
+          </div>
+
+          <div class="inv-item">
+            <div class="top"><span class="name"><span class="purpose">降血糖</span>二甲双胍片</span><span class="qty"><b>42</b> / 60 片</span></div>
+            <div class="inv-bar-wrap"><div class="inv-bar green" style="width:70%"></div></div>
+            <div class="meta"><span>预计 21 天后用完</span><span style="color:#10b981;font-weight:600">充足</span></div>
+          </div>
+
+          <div class="inv-item">
+            <div class="top"><span class="name"><span class="purpose">抗血栓</span>阿司匹林</span><span class="qty"><b>22</b> / 30 片</span></div>
+            <div class="inv-bar-wrap"><div class="inv-bar green" style="width:73%"></div></div>
+            <div class="meta"><span>预计 22 天后用完</span><span style="color:#10b981;font-weight:600">充足</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><h3>📥 近期购药记录</h3></div>
+          <div class="med-row">
+            <div class="pill-icon blue">📦</div>
+            <div class="med-info"><div class="name">二甲双胍片 0.5g × 60</div><div class="dose">2026-04-10 · 美团买药 · ¥36</div></div>
+            <span class="tag good">已签收</span>
+          </div>
+          <div class="med-row">
+            <div class="pill-icon purple">📦</div>
+            <div class="med-info"><div class="name">阿托伐他汀 20mg × 30</div><div class="dose">2026-04-02 · 美团买药 · ¥58</div></div>
+            <span class="tag good">已签收</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============= 复诊续方 ============= -->
+      <div class="page" id="page-refill">
+        <div class="hero" style="background: linear-gradient(135deg, #FFC600 0%, #FFD83D 100%);">
+          <div class="greeting">下次复诊</div>
+          <div class="next">📅 2026-05-03 上午 10:30</div>
+          <div class="next-detail">协和医院 · 内分泌科 · 张主任医师</div>
+          <div class="quick">
+            <button onclick="toast('已发起视频复诊预约')">📹 在线复诊</button>
+            <button onclick="toast('已添加日历提醒')">⏰ 添加提醒</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><h3>📋 待续方处方</h3></div>
+          <div class="followup-item">
+            <div class="fu-info">
+              <div class="doc">高血压·高血脂处方</div>
+              <div class="det">原方：氨氯地平 + 阿托伐他汀</div>
+              <div class="when">⚠️ 处方有效期还剩 5 天</div>
+            </div>
+            <button class="med-action todo" onclick="toast('已发起在线续方申请')">一键续方</button>
+          </div>
+          <div class="followup-item">
+            <div class="fu-info">
+              <div class="doc">糖尿病处方</div>
+              <div class="det">原方：二甲双胍片 0.5g</div>
+              <div class="when">处方有效期还剩 18 天</div>
+            </div>
+            <button class="med-action todo" onclick="toast('已发起在线续方申请')">一键续方</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><h3>👨‍⚕️ 我的医生</h3></div>
+          <div class="med-row">
+            <div class="pill-icon yellow">👨‍⚕️</div>
+            <div class="med-info"><div class="name">张志远 · 主任医师</div><div class="dose">协和医院 · 内分泌科</div></div>
+            <button class="med-action todo" onclick="toast('正在连线…')">咨询</button>
+          </div>
+          <div class="med-row">
+            <div class="pill-icon green">👩‍⚕️</div>
+            <div class="med-info"><div class="name">李芳 · 副主任医师</div><div class="dose">协和医院 · 心血管科</div></div>
+            <button class="med-action todo" onclick="toast('正在连线…')">咨询</button>
+          </div>
+          <div class="med-row">
+            <div class="pill-icon purple">💊</div>
+            <div class="med-info"><div class="name">陈药师</div><div class="dose">7×24 用药咨询</div></div>
+            <button class="med-action todo" onclick="toast('正在连线…')">咨询</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============= 健康档案 ============= -->
+      <div class="page" id="page-health">
+        <div class="card">
+          <div class="card-title"><h3>📊 关键指标</h3><span class="more" onclick="toast('打开记录页')">+ 记录</span></div>
+          <div class="metric-grid">
+            <div class="metric"><div class="lbl">血压（早）</div><div class="val">132/85<span class="unit">mmHg</span></div><div class="trend stable">— 持平</div></div>
+            <div class="metric"><div class="lbl">空腹血糖</div><div class="val">6.8<span class="unit">mmol/L</span></div><div class="trend down">↓ -0.4</div></div>
+            <div class="metric"><div class="lbl">心率</div><div class="val">76<span class="unit">bpm</span></div><div class="trend stable">— 正常</div></div>
+            <div class="metric"><div class="lbl">体重</div><div class="val">68.5<span class="unit">kg</span></div><div class="trend down">↓ -0.3</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><h3>📈 近 7 日血压趋势 (高压)</h3></div>
+          <div class="mini-chart">
+            <div class="bar" style="height:55%" data-day="一"></div>
+            <div class="bar" style="height:62%" data-day="二"></div>
+            <div class="bar" style="height:58%" data-day="三"></div>
+            <div class="bar" style="height:70%" data-day="四"></div>
+            <div class="bar" style="height:65%" data-day="五"></div>
+            <div class="bar" style="height:60%" data-day="六"></div>
+            <div class="bar" style="height:66%" data-day="日"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><h3>👨‍👩‍👧 家人关怀</h3></div>
+          <div class="med-row">
+            <div class="pill-icon orange">👩</div>
+            <div class="med-info"><div class="name">王小敏 · 女儿</div><div class="dose">实时同步用药状态 · 5 分钟前查看</div></div>
+          </div>
+          <div class="med-row">
+            <div class="pill-icon blue">👨</div>
+            <div class="med-info"><div class="name">王晓东 · 儿子</div><div class="dose">紧急联系人 · 2 小时前查看</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============= AI 助手 ============= -->
+      <div class="page" id="page-ai">
+        <div style="display:flex;gap:8px;margin-bottom:14px;background:#fff;padding:4px;border-radius:14px">
+          <div id="ai-tab-chat" class="tab-pill active" style="flex:1;text-align:center;padding:10px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;background:var(--mt-yellow);color:var(--ink)" onclick="setAiTab('chat')">🤖 AI 用药咨询</div>
+          <div id="ai-tab-check" class="tab-pill" style="flex:1;text-align:center;padding:10px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;color:var(--ink-2)" onclick="setAiTab('check')">🔬 相互作用检查</div>
+        </div>
+
+        <!-- AI Chat -->
+        <div id="ai-chat-view">
+          <div class="card">
+            <div class="card-title">
+              <h3>💬 与 AI 药师对话</h3>
+              <span class="more" style="color:var(--ok)">● 在线</span>
+            </div>
+            <div class="chat-area" id="chat-area">
+              <div class="chat-msg">
+                <div class="av ai">🤖</div>
+                <div class="bubble">您好，王伯伯！我是 AI 用药助手 🤖<br>已读取您的 5 种用药档案，请问有什么需要咨询的？</div>
+              </div>
+            </div>
+
+            <div class="section-title"><span>常见问题</span></div>
+            <div class="quick-q">
+              <span onclick="askAI('二甲双胍可以和酒一起吃吗？')">二甲双胍能喝酒吗？</span>
+              <span onclick="askAI('忘记吃药怎么办？')">忘记吃药怎么办？</span>
+              <span onclick="askAI('阿司匹林饭前还是饭后吃？')">阿司匹林饭前还是饭后？</span>
+              <span onclick="askAI('我能吃西柚吗？')">能吃西柚吗？</span>
+            </div>
+
+            <div class="chat-input-bar">
+              <input id="chat-input" placeholder="请输入您的问题…" onkeypress="if(event.key==='Enter')sendChat()" />
+              <button onclick="sendChat()">发送</button>
+            </div>
+
+            <div style="font-size:11px;color:var(--ink-3);text-align:center;margin-top:6px">⚠ AI 回答仅供参考，重要决策请咨询医生/药师</div>
+          </div>
+        </div>
+
+        <!-- Drug interaction check -->
+        <div id="ai-check-view" style="display:none">
+          <div class="alert info">
+            <span class="ico">🔬</span>
+            <div class="body">
+              <div class="t">药物相互作用检查</div>
+              <div class="d">勾选要同时服用的药品，AI 自动分析风险</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title"><h3>选择药品（可多选）</h3><span class="more" onclick="toast('请扫描药品包装条码')">+ 扫码添加</span></div>
+            <div class="check-list" id="check-list">
+              <div class="check-item checked" data-id="m1" onclick="toggleCheck(this)">
+                <div class="cbox">✓</div>
+                <div>
+                  <div class="nm">阿司匹林肠溶片 100mg</div>
+                  <div class="pp"><span class="purpose">抗血栓</span></div>
+                </div>
+              </div>
+              <div class="check-item checked" data-id="m2" onclick="toggleCheck(this)">
+                <div class="cbox">✓</div>
+                <div>
+                  <div class="nm">氨氯地平 5mg</div>
+                  <div class="pp"><span class="purpose">降血压</span></div>
+                </div>
+              </div>
+              <div class="check-item checked" data-id="m3" onclick="toggleCheck(this)">
+                <div class="cbox">✓</div>
+                <div>
+                  <div class="nm">阿托伐他汀 20mg</div>
+                  <div class="pp"><span class="purpose">降血脂</span></div>
+                </div>
+              </div>
+              <div class="check-item" data-id="m4" onclick="toggleCheck(this)">
+                <div class="cbox"></div>
+                <div>
+                  <div class="nm">二甲双胍片 0.5g</div>
+                  <div class="pp"><span class="purpose">降血糖</span></div>
+                </div>
+              </div>
+              <div class="check-item" data-id="m5" onclick="toggleCheck(this)">
+                <div class="cbox"></div>
+                <div>
+                  <div class="nm">布洛芬 0.2g（自购）</div>
+                  <div class="pp"><span class="purpose">止痛退烧</span></div>
+                </div>
+              </div>
+            </div>
+            <button class="btn-primary" style="margin-top:14px" onclick="runInteractionCheck()">🔍 开始检查</button>
+          </div>
+
+          <div id="check-result-area"></div>
+        </div>
+      </div>
+
+      <!-- ============= 设置 / 字体大小 ============= -->
+      <div class="page" id="page-settings">
+        <div class="card">
+          <div class="card-title"><h3>🔤 字体大小</h3></div>
+          <div style="font-size:calc(var(--base-font) - 2px);color:var(--ink-3);margin-bottom:14px">为长辈用户专门优化，调大字体让用药信息看得更清楚</div>
+          <div class="font-options">
+            <div class="font-opt size-sm" data-size="" onclick="setFontSize('')">标准</div>
+            <div class="font-opt size-md active" data-size="lg" onclick="setFontSize('lg')">大字</div>
+            <div class="font-opt size-lg" data-size="xl" onclick="setFontSize('xl')">特大</div>
+          </div>
+          <div class="preview-text">
+            <b>预览：</b><br>
+            12:00 该服用「二甲双胍片 0.5g」<br>
+            饭后服用 1 片，请勿空腹
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><h3>🔔 提醒设置</h3></div>
+          <div class="setting-row">
+            <div><div class="lbl">用药语音提醒</div><div class="desc">到点用语音播报提醒服药</div></div>
+            <div style="background:var(--mt-yellow);padding:4px 10px;border-radius:12px;font-size:12px;font-weight:700">已开启</div>
+          </div>
+          <div class="setting-row">
+            <div><div class="lbl">漏服自动通知家人</div><div class="desc">连续漏服 2 次自动通知紧急联系人</div></div>
+            <div style="background:var(--mt-yellow);padding:4px 10px;border-radius:12px;font-size:12px;font-weight:700">已开启</div>
+          </div>
+          <div class="setting-row">
+            <div><div class="lbl">复诊提前提醒</div><div class="desc">提前 3 天提醒复诊安排</div></div>
+            <div style="background:var(--mt-yellow);padding:4px 10px;border-radius:12px;font-size:12px;font-weight:700">已开启</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><h3>👨‍👩‍👧 家人共管</h3></div>
+          <div class="setting-row">
+            <div><div class="lbl">允许家人查看用药状态</div><div class="desc">已邀请：小敏、晓东</div></div>
+            <div style="background:var(--mt-yellow);padding:4px 10px;border-radius:12px;font-size:12px;font-weight:700">已开启</div>
+          </div>
+        </div>
+
+        <button class="btn-ghost" onclick="switchPage('home')">← 返回首页</button>
+      </div>
+
+    </div>
+
+    <!-- Bottom Tab -->
+    <div class="tab-bar">
+      <div class="tab active" data-page="home" onclick="switchPage('home')"><span class="ico">🏠</span>首页</div>
+      <div class="tab" data-page="plan" onclick="switchPage('plan')"><span class="ico">💊</span>用药</div>
+      <div class="tab" data-page="inventory" onclick="switchPage('inventory')"><span class="ico">📦</span>库存</div>
+      <div class="tab" data-page="refill" onclick="switchPage('refill')"><span class="ico">🩺</span>复诊</div>
+      <div class="tab" data-page="ai" onclick="switchPage('ai')"><span class="ico">🤖</span>AI</div>
+      <div class="tab" data-page="health" onclick="switchPage('health')"><span class="ico">📊</span>档案</div>
+    </div>
+
+    <!-- Modal: add medication -->
+    <div class="modal-mask" id="add-modal" onclick="if(event.target===this)closeAddModal()">
+      <div class="modal">
+        <h3>添加用药</h3>
+        <div class="field"><label>药品名称</label><input placeholder="如：氨氯地平片" /></div>
+        <div class="field"><label>主要作用（用药档案高亮显示）</label><input placeholder="如：降血压" /></div>
+        <div class="field"><label>每次用量 / 每日次数</label>
+          <select><option>1片 / 每日1次</option><option>1片 / 每日2次</option><option>2片 / 每日3次</option></select>
+        </div>
+        <div class="field"><label>服用时间</label>
+          <select><option>餐前</option><option>餐后</option><option>睡前</option><option>空腹</option></select>
+        </div>
+        <button class="btn-primary" onclick="closeAddModal();toast('已添加用药计划 ✓')">保存并设置提醒</button>
+      </div>
+    </div>
+
+    <!-- Modal: take confirmation -->
+    <div class="modal-mask" id="take-modal" onclick="if(event.target===this)closeTakenModal()">
+      <div class="modal" style="text-align:center;">
+        <div style="font-size:48px;margin:8px 0">💊</div>
+        <h3 id="take-title">确认服用？</h3>
+        <p id="take-desc" style="font-size:13px;color:var(--ink-3);margin-bottom:16px"></p>
+        <button class="btn-primary" onclick="confirmTaken()">✓ 已服用</button>
+        <button class="btn-ghost" style="margin-top:10px" onclick="closeTakenModal();toast('已记录漏服并通知家人')">✕ 漏服</button>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+  </div>
+</div>
+
+<script>
+  // ====== State ======
+  // Today's medications (status: 'done' | 'pending')
+  const meds = [
+    { id:'a', name:'阿司匹林肠溶片', dose:'100mg', time:'08:00', timeMin: 8*60, status:'done', purpose:'抗血栓', note:'早餐前 · 1片', color:'red', icon:'❤' },
+    { id:'b', name:'二甲双胍片',   dose:'0.5g',  time:'12:00', timeMin:12*60, status:'pending', purpose:'降血糖', note:'午餐后 · 1片', color:'blue', icon:'💊' },
+    { id:'c', name:'氨氯地平',     dose:'5mg',   time:'18:30', timeMin:18*60+30, status:'pending', purpose:'降血压', note:'晚餐后 · 1片', color:'orange', icon:'💊' },
+    { id:'d', name:'阿托伐他汀',   dose:'20mg',  time:'22:00', timeMin:22*60, status:'pending', purpose:'降血脂', note:'睡前 · 1片', color:'purple', icon:'💊' },
+  ];
+
+  // Simulated "now" (10:18 in this demo) — purely cosmetic; countdown still ticks
+  const NOW_MIN = 10*60 + 18;
+
+  function getNextMed() {
+    return meds.find(m => m.status === 'pending');
+  }
+
+  function allDone() {
+    return meds.every(m => m.status === 'done');
+  }
+
+  // ====== Render hero ======
+  let countdownSeconds = 0;
+
+  function renderHero() {
+    const hero = document.getElementById('hero');
+    const next = getNextMed();
+    document.getElementById('stat-todo').textContent = meds.filter(m=>m.status==='pending').length;
+
+    if (!next) {
+      // ALL DONE state
+      hero.classList.add('done');
+      hero.innerHTML = `
+        <div class="check-big">🎉</div>
+        <div class="next">今日药品已服用完毕</div>
+        <div class="next-detail">坚持就是胜利！明日继续加油 💪</div>
+        <div class="quick">
+          <button onclick="switchPage('plan')">📋 查看明日计划</button>
+          <button onclick="switchPage('health')">📊 记录健康指标</button>
+        </div>
+      `;
+      return;
+    }
+
+    hero.classList.remove('done');
+    // Compute remaining minutes until next med (use next.timeMin vs NOW_MIN; min 0)
+    const diffMin = Math.max(0, next.timeMin - NOW_MIN);
+    countdownSeconds = diffMin * 60 + 13; // +13s for liveliness
+
+    hero.innerHTML = `
+      <div class="greeting">距离下次服药还有</div>
+      <div class="countdown"><b id="countdown">--:--:--</b></div>
+      <div class="next">💊 ${next.name} ${next.dose}</div>
+      <div class="next-detail">${next.note} · ${next.time}</div>
+      <div class="quick">
+        <button onclick="openTakenModal()">✓ 已吃药</button>
+        <button onclick="snoozeMed()">⏰ 推迟 10 分钟</button>
+      </div>
+    `;
+    updateCountdownDisplay();
+  }
+
+  function updateCountdownDisplay() {
+    const el = document.getElementById('countdown');
+    if (!el) return;
+    const t = Math.max(0, countdownSeconds);
+    const h = String(Math.floor(t/3600)).padStart(2,'0');
+    const m = String(Math.floor((t%3600)/60)).padStart(2,'0');
+    const s = String(t%60).padStart(2,'0');
+    el.textContent = `${h}:${m}:${s}`;
+  }
+
+  setInterval(() => {
+    if (countdownSeconds > 0) { countdownSeconds--; updateCountdownDisplay(); }
+  }, 1000);
+
+  // ====== Timeline render ======
+  function renderTimeline() {
+    const wrap = document.getElementById('timeline');
+    const next = getNextMed();
+    wrap.innerHTML = meds.map(m => {
+      const isDone = m.status === 'done';
+      const isNow  = !isDone && m === next;
+      const dotClass = isDone ? 'done' : (isNow ? 'now' : '');
+      const cardClass = isNow ? 'now' : '';
+      const noteText = isDone ? `${m.note.split('·')[0]}· ✓ 已服用` : (isNow ? `${m.note} · 即将提醒 ⏰` : m.note);
+      return `
+        <div class="timeline-item">
+          <div class="time-col">${m.time}</div>
+          <div class="dot-col"><div class="dot ${dotClass}"></div><div class="line"></div></div>
+          <div class="item-card ${cardClass}">
+            <div class="meds"><span class="purpose">${m.purpose}</span>${m.name} ${m.dose}</div>
+            <div class="note">${noteText}</div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  // ====== Page nav ======
+  const titles = {
+    home:      ['早上好，王伯伯 👋', '今天是 4 月 24 日，星期五'],
+    plan:      ['用药计划', '5 种在用药品 · 今日 4 次提醒'],
+    inventory: ['药品库存', '2 种药品库存不足，建议续购'],
+    refill:    ['复诊与续方', '下次复诊：5 月 3 日'],
+    health:    ['健康档案', '近 7 日数据已同步'],
+    ai:        ['AI 用药助手', '智能咨询 · 相互作用检查'],
+    settings:  ['设置', '字体大小 / 提醒 / 家人共管'],
+  };
+
+  function switchPage(name) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + name).classList.add('active');
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.page === name));
+    document.getElementById('page-title').textContent = titles[name][0];
+    document.getElementById('page-sub').textContent = titles[name][1];
+    document.querySelector('.page-area').scrollTop = 0;
+    if (name === 'plan') renderTimeline();
+  }
+
+  // ====== Take confirmation flow ======
+  function openTakenModal() {
+    const next = getNextMed();
+    if (!next) return;
+    document.getElementById('take-title').textContent = `确认服用 ${next.name} ${next.dose}？`;
+    document.getElementById('take-desc').textContent = next.note;
+    document.getElementById('take-modal').classList.add('show');
+  }
+  function closeTakenModal() { document.getElementById('take-modal').classList.remove('show'); }
+
+  function confirmTaken() {
+    const next = getNextMed();
+    if (next) next.status = 'done';
+    closeTakenModal();
+    renderHero();      // → auto-jump to next countdown OR "all done" state
+    renderTimeline();
+    if (allDone()) toast('🎉 今日药品已全部服用完毕！');
+    else toast('已记录服药 ✓ 已为您切换到下一次提醒');
+  }
+
+  function snoozeMed() { toast('已推迟提醒 10 分钟 ⏰'); countdownSeconds += 600; updateCountdownDisplay(); }
+
+  function openAddModal() { document.getElementById('add-modal').classList.add('show'); }
+  function closeAddModal() { document.getElementById('add-modal').classList.remove('show'); }
+
+  let toastTimer;
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  // ====== Font size ======
+  function setFontSize(size) {
+    document.body.classList.remove('font-lg', 'font-xl');
+    if (size) document.body.classList.add('font-' + size);
+    document.querySelectorAll('.font-opt').forEach(o => o.classList.toggle('active', o.dataset.size === size));
+    toast('字体已切换 ✓');
+  }
+
+  // ====== AI assistant ======
+  function setAiTab(tab) {
+    document.getElementById('ai-chat-view').style.display  = tab === 'chat'  ? '' : 'none';
+    document.getElementById('ai-check-view').style.display = tab === 'check' ? '' : 'none';
+    const t1 = document.getElementById('ai-tab-chat');
+    const t2 = document.getElementById('ai-tab-check');
+    [t1, t2].forEach(t => { t.style.background = ''; t.style.color = 'var(--ink-2)'; });
+    const active = tab === 'chat' ? t1 : t2;
+    active.style.background = 'var(--mt-yellow)';
+    active.style.color = 'var(--ink)';
+  }
+
+  const aiAnswers = {
+    '二甲双胍可以和酒一起吃吗？': '⚠️ 不建议。二甲双胍 + 酒精会增加乳酸酸中毒风险，可能出现恶心、呕吐、深快呼吸等症状。建议服药期间严格戒酒，至少间隔 24 小时。',
+    '忘记吃药怎么办？': '想起时若距下次服药超过 4 小时，立即补服；若不足 4 小时，跳过本次，绝不可双倍服用。同时点击「记录漏服」我会通知家人。',
+    '阿司匹林饭前还是饭后吃？': '您服用的是「阿司匹林肠溶片」，建议**空腹服用**（饭前 30 分钟），整片用温水送服，不要嚼碎。这样能让药物到达肠道才溶解，减少胃刺激。',
+    '我能吃西柚吗？': '⚠️ 您正在服用「氨氯地平」和「阿托伐他汀」，两者都与西柚有相互作用！会显著升高血药浓度，增加副作用风险。建议服药期间避免食用西柚及西柚汁。',
+  };
+
+  function askAI(q) {
+    appendMsg('me', q);
+    setTimeout(() => {
+      const ans = aiAnswers[q] || '收到您的问题，正在结合您的用药档案分析中…（演示版回答）';
+      appendMsg('ai', ans);
+    }, 600);
+  }
+
+  function sendChat() {
+    const inp = document.getElementById('chat-input');
+    if (!inp.value.trim()) return;
+    askAI(inp.value.trim());
+    inp.value = '';
+  }
+
+  function appendMsg(who, text) {
+    const area = document.getElementById('chat-area');
+    const div = document.createElement('div');
+    div.className = 'chat-msg ' + (who === 'me' ? 'me' : '');
+    div.innerHTML = `
+      <div class="av ${who}">${who === 'ai' ? '🤖' : '👤'}</div>
+      <div class="bubble">${text}</div>`;
+    area.appendChild(div);
+    area.scrollTop = area.scrollHeight;
+  }
+
+  // ====== Drug interaction check ======
+  function toggleCheck(el) {
+    el.classList.toggle('checked');
+    el.querySelector('.cbox').textContent = el.classList.contains('checked') ? '✓' : '';
+  }
+
+  function runInteractionCheck() {
+    const checked = Array.from(document.querySelectorAll('.check-item.checked')).map(el => el.dataset.id);
+    const area = document.getElementById('check-result-area');
+
+    // Mock interaction logic
+    const interactions = [];
+    if (checked.includes('m1') && checked.includes('m5')) {
+      interactions.push({ sev:'high', pair:'阿司匹林 ⚠ 布洛芬', desc:'两者均为非甾体抗炎药，联用会显著增加胃肠道出血风险，且布洛芬可能削弱阿司匹林的抗血小板作用。建议至少间隔 8 小时，或咨询医生改用其他止痛药。' });
+    }
+    if (checked.includes('m2') && checked.includes('m3')) {
+      interactions.push({ sev:'low', pair:'氨氯地平 + 阿托伐他汀', desc:'常用联合用药方案，可同时控制血压和血脂。需注意定期监测肝功能。' });
+    }
+    if (checked.includes('m1') && checked.includes('m4')) {
+      interactions.push({ sev:'mid', pair:'阿司匹林 + 二甲双胍', desc:'阿司匹林大剂量（>3g/日）可能增强降糖作用。常规剂量（100mg）下风险较低，但仍需关注血糖波动。' });
+    }
+
+    if (interactions.length === 0) {
+      area.innerHTML = `
+        <div class="check-result">
+          <span class="severity low">✓ 安全</span>
+          <div class="pair">所选 ${checked.length} 种药品未检出明显相互作用</div>
+          <div class="desc">可按医嘱正常服用。如出现不适，请及时咨询药师。</div>
+        </div>`;
+    } else {
+      area.innerHTML = '<div class="section-title"><span>检查结果（共 ' + interactions.length + ' 项）</span></div>' +
+        interactions.map(i => {
+          const lbl = i.sev === 'high' ? '⚠ 高风险' : i.sev === 'mid' ? '⚠ 中风险' : '✓ 可联用';
+          return `
+            <div class="check-result">
+              <span class="severity ${i.sev}">${lbl}</span>
+              <div class="pair">${i.pair}</div>
+              <div class="desc">${i.desc}</div>
+            </div>`;
+        }).join('');
+    }
+    toast('检查完成');
+  }
+
+  // ====== Init ======
+  renderHero();
+  renderTimeline();
+</script>
+</body>
+</html>
