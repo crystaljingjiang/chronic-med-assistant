@@ -1,5 +1,7 @@
 # 慢病用药小管家 · Chronic Medication Assistant
 
+**▶ [Try the live demo](https://crystaljingjiang.github.io/chronic-med-assistant/)**. It works on desktop and on your phone.
+
 An interactive mobile prototype that helps older adults with chronic conditions take the right pill at the right time, keep enough medicine at home, renew prescriptions on time, and check drug interactions. Family members can follow along.
 
 The prototype is one self-contained `index.html` with no build step and no dependencies. It is styled as a mini-app inside Meituan, with purchases going through 美团买药.
@@ -80,13 +82,13 @@ Each screen has its own URL hash, which is handy for demos and for linking to a 
 | `#ai` | AI chat |
 | `#ai/check` | Drug interaction checker |
 
-## Publishing a live demo (GitHub Pages)
+## Live demo (GitHub Pages)
 
-The app is a static file, so GitHub Pages can host it as is:
+The demo at <https://crystaljingjiang.github.io/chronic-med-assistant/> is served by GitHub Pages straight from the `main` branch. Every push to `main` redeploys it within a minute or two.
 
-1. On GitHub, open **Settings → Pages**.
-2. Under **Build and deployment**, choose **Deploy from a branch**, then pick `main` and `/ (root)`.
-3. After about a minute the demo is live at `https://crystaljingjiang.github.io/chronic-med-assistant/`.
+Deep links work there too. For example, [`#ai/check`](https://crystaljingjiang.github.io/chronic-med-assistant/#ai/check) opens the interaction checker.
+
+To host your own copy from a fork, open **Settings → Pages**, choose **Deploy from a branch**, then pick `main` and `/ (root)`.
 
 ## Project structure
 
